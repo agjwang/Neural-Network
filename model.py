@@ -10,21 +10,27 @@ class NeuralNet:
         self.iterations = iterations
         self.print_cost = print_cost
         self.model = None
+        self.parameters = None
 
     def build_model(self, X, Y):
+        assert(len(X) == len(Y))
+
         training_set_size = len(X)
 
         parameters = self.initialize_params()
-        print(parameters)
 
         for i in range(self.iterations):
-            x = 0
             # forward propagation
+            A = self.forward_propagation(X, parameters)
             # back propagation
+            gradients = self.back_propagation(A, parameters)
             # update
-            # print_cost
+            parameters = self.update_params(parameters, gradients)
+            # print cost
+            if i % 500 == 0:
+                print("Loss after iteration %i: %f" %(i, self.calculate_cost(Y, training_set_size, parameters)))
 
-        return parameters
+        self.parameters = parameters
 
     def initialize_params(self):
         np.random.seed(0)
@@ -46,17 +52,41 @@ class NeuralNet:
         return parameters
 
     def forward_propagation(self, X, parameters):
+        return 0
 
-    def back_propagation(self, parameters, probs):
+    def back_propagation(self, A, parameters):
+        return 0
 
-    def calculate_cost(self):
+    # Calculate cost using cross entropy loss
+    def calculate_cost(self, X, Y, parameters):
+        training_set_size = len(X)
+        total_cost = 0
+
+        for i in range(training_set_size):
+            a = X[i]
+
+            for l in range(l, len(self.layer_dimensions)):
+                a = self.activation_function(np.dot(parameters['W' + str(l)], a) + parameters['b' + str(l)])
+
+            # Create vector where y[Y[i]]] is 1 and all other values are 0
+            y = np.zeros_like(a)
+            y[Y[i]] = 1
+
+            log_loss = -np.sum(y.dot(a) + ((y * -1) + 1).dot(a))
+            total_cost += np.sum(log_loss)
+
+        return total_cost / training_set_size
 
     def predict(self, x):
+        a = x
+        for i in range(1, len(self.layer_dimensions)):
+            a = self.activation_function(np.dot(self.parameters['W' + str(i)], a) + self.parameters['b' + str(i)])
+        return np.argmax(a)
 
     def activation_function(self, Z):
         if self.activation_function_name == 'relu':
-            relu(Z)
+            return relu(Z)
         elif self.activation_function_name == 'sigmoid':
-            sigmoid(Z)
+            return sigmoid(Z)
         else:
-            tanh(Z)
+            return tanh(Z)
