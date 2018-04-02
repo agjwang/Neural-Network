@@ -2,11 +2,10 @@ import numpy as np
 from activation import sigmoid, relu, tanh
 
 class NeuralNet:
-    def __init__(self, layer_dimensions, epsilon = 0.01, activation_function_name = 'relu', iterations = 10000,
-                 print_cost = False):
+    def __init__(self, layer_dimensions, epsilon=0.01, activation_function='relu', iterations=10000, print_cost=False):
         self.layer_dimensions = layer_dimensions
         self.epsilon = epsilon
-        self.activation_function_name = activation_function_name
+        self.activation_function_name = activation_function
         self.iterations = iterations
         self.print_cost = print_cost
         self.model = None
@@ -15,20 +14,24 @@ class NeuralNet:
     def build_model(self, X, Y):
         assert(len(X) == len(Y))
 
-        training_set_size = len(X)
-
         parameters = self.initialize_params()
 
         for i in range(self.iterations):
             # forward propagation
             A = self.forward_propagation(X, parameters)
+
+            # calculate cost
+            cost = self.calculate_cost(A, Y)
+
             # back propagation
             gradients = self.back_propagation(A, parameters)
+
             # update
             parameters = self.update_params(parameters, gradients)
-            # print cost
-            if i % 500 == 0:
-                print("Loss after iteration %i: %f" %(i, self.calculate_cost(Y, training_set_size, parameters)))
+
+            # print cost every 500 iterations
+            if self.print_cost and i % 500 == 0:
+                print("Loss after iteration %i: %f" %(i, cost))
 
         self.parameters = parameters
 
@@ -38,8 +41,8 @@ class NeuralNet:
         layer_dims = self.layer_dimensions
 
         for i in range(1, len(layer_dims)):
-            parameters['W' + str(i)] = np.random.randn(layer_dims[i], layer_dims[i - 1]) * 1
-            parameters['W' + str(i)] = np.zeros((layer_dims[i], 1))
+            parameters['W' + str(i)] = np.random.randn(layer_dims[i - 1], layer_dims[i]) * 1
+            parameters['b' + str(i)] = np.zeros((1, layer_dims[i]))
 
         return parameters
 
@@ -52,21 +55,25 @@ class NeuralNet:
         return parameters
 
     def forward_propagation(self, X, parameters):
-        return 0
+        A = X
+
+        for i in range(1, len(self.layer_dimensions)):
+            Z = np.dot(A, parameters['W' + str(i)]) + parameters['b' + str(i)]
+            A = self.activation_function(Z)
+
+        return A
 
     def back_propagation(self, A, parameters):
         return 0
 
     # Calculate cost using cross entropy loss
-    def calculate_cost(self, X, Y, parameters):
-        training_set_size = len(X)
+    def calculate_cost(self, A, Y):
+        assert(len(A) == len(Y))
+
         total_cost = 0
 
-        for i in range(training_set_size):
-            a = X[i]
-
-            for l in range(l, len(self.layer_dimensions)):
-                a = self.activation_function(np.dot(parameters['W' + str(l)], a) + parameters['b' + str(l)])
+        for i in range(len(Y)):
+            a = A[i]
 
             # Create vector where y[Y[i]]] is 1 and all other values are 0
             y = np.zeros_like(a)
@@ -75,13 +82,10 @@ class NeuralNet:
             log_loss = -np.sum(y.dot(a) + ((y * -1) + 1).dot(a))
             total_cost += np.sum(log_loss)
 
-        return total_cost / training_set_size
+        return total_cost / len(Y)
 
     def predict(self, x):
-        a = x
-        for i in range(1, len(self.layer_dimensions)):
-            a = self.activation_function(np.dot(self.parameters['W' + str(i)], a) + self.parameters['b' + str(i)])
-        return np.argmax(a)
+        return np.argmax(self.forward_propagation(x, self.parameters))
 
     def activation_function(self, Z):
         if self.activation_function_name == 'relu':

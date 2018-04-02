@@ -10,7 +10,7 @@ plt.scatter(X[:, 0], X[:, 1], s=40, c=Y, cmap=plt.cm.Spectral)
 # plt.savefig("data.png")
 
 # Build model with 3 hidden layers
-model = NeuralNet([2, 3, 2], print_cost=True)
+model = NeuralNet([2, 3, 2], activation_function='tanh', print_cost=True)
 model.build_model(X, Y)
 
 # Plot decision boundary
