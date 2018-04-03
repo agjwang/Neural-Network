@@ -1,5 +1,5 @@
 import numpy as np
-from activation import sigmoid, relu, tanh
+from activation import sigmoid, relu, tanh, derivative_sigmoid, derivative_relu, derivative_tanh
 
 class NeuralNet:
     def __init__(self, layer_dimensions, epsilon=0.01, activation_function='relu', iterations=10000, print_cost=False):
@@ -18,18 +18,18 @@ class NeuralNet:
 
         for i in range(self.iterations):
             # forward propagation
-            A = self.forward_propagation(X, parameters)
+            output = self.forward_propagation(X, parameters)
 
             # calculate cost
-            cost = self.calculate_cost(A, Y)
+            cost = self.calculate_cost(output[len(X) - 1], Y)
 
             # back propagation
-            gradients = self.back_propagation(A, parameters)
+            gradients = self.back_propagation(cost, output)
 
             # update
             parameters = self.update_params(parameters, gradients)
 
-            # print cost every 500 iterations
+            # print cost every 500 iterations (optional)
             if self.print_cost and i % 500 == 0:
                 print("Loss after iteration %i: %f" %(i, cost))
 
@@ -40,7 +40,7 @@ class NeuralNet:
         parameters = {}
         layer_dims = self.layer_dimensions
 
-        for i in range(1, len(layer_dims)):
+        for i in range(0, len(layer_dims)):
             parameters['W' + str(i)] = np.random.randn(layer_dims[i - 1], layer_dims[i]) * 1
             parameters['b' + str(i)] = np.zeros((1, layer_dims[i]))
 
@@ -48,7 +48,7 @@ class NeuralNet:
 
     def update_params(self, parameters, gradients):
 
-        for i in range(1, len(self.layer_dimensions)):
+        for i in range(0, len(self.layer_dimensions)):
             parameters['W' + str(i)] -= self.epsilon * gradients['dW' + str(i)]
             parameters['b' + str(i)] -= self.epsilon * gradients['db' + str(i)]
 
@@ -56,17 +56,37 @@ class NeuralNet:
 
     def forward_propagation(self, X, parameters):
         A = X
+        output = []
 
-        for i in range(1, len(self.layer_dimensions)):
+        for i in range(0, len(self.layer_dimensions)):
             Z = np.dot(A, parameters['W' + str(i)]) + parameters['b' + str(i)]
             A = self.activation_function(Z)
 
-        return A
+            # append output for each layer
+            output.append(A)
 
-    def back_propagation(self, A, parameters):
-        return 0
+        return output
 
-    # Calculate cost using cross entropy loss
+    def back_propagation(self, cost, output):
+        gradients = {}
+
+        delta_prev = cost
+
+        for i in range(len(output) - 1, -1, -1):
+            dZ = self.activation_function_backwards(gradients["dA" + str(i + 1)])
+
+            delta_i = dZ.dot(delta_prev).dot(output[i].T)
+            dW_temp = output[i].T.dot(delta_prev)
+            db_temp = delta_prev
+            delta_prev = delta_i
+
+            # figure out gradients to use for gradient descent
+            gradients["dW" + str(i)] = dW_temp
+            gradients["db" + str(i)] = db_temp
+
+        return gradients
+
+    # Calculate cost using mean squared loss
     def calculate_cost(self, A, Y):
         assert(len(A) == len(Y))
 
@@ -85,7 +105,8 @@ class NeuralNet:
         return total_cost / len(Y)
 
     def predict(self, x):
-        return np.argmax(self.forward_propagation(x, self.parameters))
+        output = self.forward_propagation(x, self.parameters)
+        return np.argmax(output[len(output) - 1])
 
     def activation_function(self, Z):
         if self.activation_function_name == 'relu':
@@ -94,3 +115,11 @@ class NeuralNet:
             return sigmoid(Z)
         else:
             return tanh(Z)
+
+    def activation_function_backwards(self, dA):
+        if self.activation_function_name == 'relu':
+            return derivative_relu(dA)
+        elif self.activation_function_name == 'sigmoid':
+            return derivative_sigmoid(dA)
+        else:
+            return derivative_tanh(dA)
